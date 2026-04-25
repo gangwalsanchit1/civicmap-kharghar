@@ -1,6 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CivicMap Kharghar — Know who's responsible</title>
+<meta name="description" content="Citizen-powered civic accountability for Kharghar, Navi Mumbai. Find who's responsible for water, roads, garbage and more.">
+</head>
+<body>
 <!-- CivicMap Kharghar — Citizen-powered civic accountability platform -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</body>
+</html>
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -211,6 +222,49 @@
   .empty-state .big { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
   .empty-state p { font-size: 13px; line-height: 1.5; }
 
+  /* SLA countdown */
+  .sla-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; margin-top: 8px; font-size: 11px; font-weight: 600; }
+  .sla-good { background: #D1FAE5; color: #065F46; }
+  .sla-warn { background: #FEF3C7; color: #92400E; }
+  .sla-breach { background: #FEE2E2; color: #991B1B; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+  .sla-icon { font-size: 13px; }
+
+  /* Lifecycle pipeline */
+  .pipeline { display: flex; align-items: center; gap: 0; margin-top: 10px; padding: 8px; background: white; border-radius: 8px; border: 1px solid var(--border); }
+  .pipeline-stage { flex: 1; text-align: center; position: relative; padding: 4px 2px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--muted-light); }
+  .pipeline-stage.done { color: var(--green); }
+  .pipeline-stage.active { color: var(--saffron-dark); }
+  .pipeline-stage.skipped { color: var(--muted-light); opacity: 0.4; }
+  .pipeline-stage::before { content: ''; display: block; width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 4px; background: #f0ece0; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 20px; }
+  .pipeline-stage.done::before { background: var(--green); border-color: var(--green); content: '✓'; color: white; }
+  .pipeline-stage.active::before { background: var(--saffron); border-color: var(--saffron); content: '●'; color: white; animation: pulse 2s infinite; }
+  .pipeline-arrow { color: var(--border); font-size: 14px; padding: 0 2px; align-self: flex-start; margin-top: 8px; }
+
+  /* Animated counter */
+  .stat-num { display: inline-block; transition: transform 0.3s ease; }
+  .stat-num.bump { transform: scale(1.3); color: var(--saffron); }
+
+  /* Activity pulse */
+  .live-dot { display: inline-block; width: 6px; height: 6px; background: var(--red); border-radius: 50%; margin-right: 4px; vertical-align: middle; animation: livepulse 1.5s infinite; }
+  @keyframes livepulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
+
+  /* Charter card */
+  .charter-card { background: linear-gradient(135deg, #F0F9FF, #DBEAFE); border: 1px solid #60A5FA; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .charter-card h3 { color: #1E3A8A; font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .charter-card p { font-size: 12px; color: #1E40AF; line-height: 1.5; }
+
+  /* Process visualization */
+  .process-step { display: flex; gap: 12px; margin-bottom: 14px; }
+  .process-num { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--saffron), var(--saffron-dark)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 28px; font-size: 13px; }
+  .process-content h4 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .process-content p { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+  /* Smoother transitions */
+  .action-card, .activity-item, .complaint-item, .card { transition: all 0.2s ease; }
+  .action-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .activity-item:hover { background: #fff8f3; transform: translateX(4px); }
+
   /* ===== MAP view ===== */
   .map-container { height: 100%; display: flex; flex-direction: column; position: relative; }
   .map-controls { background: white; border-bottom: 1px solid var(--border); padding: 8px 10px; display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; z-index: 10; }
@@ -404,6 +458,11 @@
     <!-- REPORT CARD VIEW -->
     <div id="view-reportcard" class="view hidden">
       <div class="home" id="reportcard-content"><!-- rendered by JS --></div>
+    </div>
+
+    <!-- CHARTER VIEW -->
+    <div id="view-charter" class="view hidden">
+      <div class="home" id="charter-content"><!-- rendered by JS --></div>
     </div>
   </div>
 
@@ -1028,6 +1087,130 @@ async function addComplaint(data) {
   return id;
 }
 
+// ============================================================================
+// SLA & LIFECYCLE — Community Charter rules built into the app
+// ============================================================================
+// These SLAs make the workflow feel automated even before real backend exists.
+
+const SLA = {
+  VERIFY_HOURS: 24,      // Pending → Verified target (community has 24hr to upvote)
+  ESCALATE_DAYS: 7,      // Verified → Should be escalated within 7 days
+  RESPOND_DAYS: 15,      // Per Citizen Charter: officials must respond in 15 days
+  RESOLVE_DAYS: 30       // Per Citizen Charter: resolution within 30 days
+};
+
+function getSLAStatus(c) {
+  if (!c || c.status === 'resolved') return null;
+  const now = Date.now();
+  const day = 86400000;
+  const hour = 3600000;
+
+  if (c.status === 'pending') {
+    const deadline = c.timestamp + SLA.VERIFY_HOURS * hour;
+    const remaining = deadline - now;
+    if (remaining > 0) {
+      const hrs = Math.ceil(remaining / hour);
+      return { type: 'good', icon: '⏱️', text: `Needs ${3 - (c.upvotes || 0)} more upvote${3-(c.upvotes||0)===1?'':'s'} · ${hrs}h to verify` };
+    }
+    return { type: 'warn', icon: '⏰', text: `Verification overdue · needs ${3 - (c.upvotes || 0)} more upvotes` };
+  }
+
+  if (c.status === 'verified' && !c.escalated) {
+    const verifiedAt = (c.events || []).find(e => e.type === 'verified')?.ts || c.timestamp;
+    const deadline = verifiedAt + SLA.ESCALATE_DAYS * day;
+    const remaining = deadline - now;
+    if (remaining > 0) {
+      const days = Math.ceil(remaining / day);
+      return { type: 'good', icon: '📣', text: `Ready to escalate · ${days} day${days===1?'':'s'} to formally email dept` };
+    }
+    return { type: 'warn', icon: '⚠️', text: 'Escalation overdue — tap "Escalate" to send formal email' };
+  }
+
+  if (c.escalated) {
+    const escalatedAt = (c.events || []).find(e => e.type === 'escalated')?.ts || c.timestamp;
+    const respondBy = escalatedAt + SLA.RESPOND_DAYS * day;
+    const resolveBy = escalatedAt + SLA.RESOLVE_DAYS * day;
+    const hasResponse = c.officialResponses && c.officialResponses.length > 0;
+
+    if (!hasResponse && now < respondBy) {
+      const days = Math.ceil((respondBy - now) / day);
+      return { type: 'good', icon: '⏳', text: `Awaiting official response · ${days} day${days===1?'':'s'} per Citizen Charter` };
+    }
+    if (!hasResponse && now >= respondBy) {
+      return { type: 'breach', icon: '🚨', text: `SLA BREACHED · No response in ${SLA.RESPOND_DAYS} days · Escalate to MLA` };
+    }
+    if (hasResponse && now < resolveBy) {
+      const days = Math.ceil((resolveBy - now) / day);
+      return { type: 'good', icon: '🔧', text: `Response received · ${days} day${days===1?'':'s'} to resolution per Charter` };
+    }
+    if (now >= resolveBy) {
+      return { type: 'breach', icon: '🚨', text: `Resolution overdue · ${SLA.RESOLVE_DAYS}+ days since escalation` };
+    }
+  }
+  return null;
+}
+
+function getStageFromComplaint(c) {
+  if (c.status === 'resolved') return 4;
+  if (c.escalated) return 3;
+  if (c.status === 'verified') return 2;
+  if (c.status === 'pending') return 1;
+  return 0;
+}
+
+function lifecyclePipeline(c) {
+  const stage = getStageFromComplaint(c);
+  const stages = ['Reported', 'Verified', 'Escalated', 'Resolved'];
+  return `
+    <div class="pipeline">
+      ${stages.map((label, i) => {
+        const cls = stage > i ? 'done' : (stage === i+1 ? 'active' : (stage > i+1 ? 'done' : ''));
+        return `
+          <div class="pipeline-stage ${cls}">${label}</div>
+          ${i < stages.length - 1 ? '<div class="pipeline-arrow">›</div>' : ''}
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ============================================================================
+// COMMUNITY CHARTER — visible rules of the system
+// ============================================================================
+
+const CHARTER_TEXT = {
+  title: '📜 Community Charter',
+  intro: 'CivicMap Kharghar is a community-owned platform. Here\'s how it works — transparently and the same way for everyone.',
+  rules: [
+    { icon: '📝', title: 'Anyone can report', text: 'Any resident can report any civic issue in any zone. No login, no gatekeeping. Just facts and location.' },
+    { icon: '🤝', title: '3 upvotes = Verified', text: 'Reports start as "Pending". Once 3 different residents upvote, it becomes "Verified" — meaning the community confirms it\'s a real issue.' },
+    { icon: '⚖️', title: 'Trust-weighted votes', text: 'Active contributors earn trust badges (Bronze/Silver/Gold). Gold members\' votes count 3× — but only after they\'ve consistently reported real issues.' },
+    { icon: '📣', title: 'After 7 days verified → Escalate', text: 'Verified issues that aren\'t resolved within 7 days get a formal escalation email drafted automatically — sent to the responsible department, with MLA and MP CC\'d.' },
+    { icon: '⏳', title: '15-day response window', text: 'Per Maharashtra\'s Citizen Charter, government departments must respond within 15 days. We track this. Breached SLAs are flagged publicly.' },
+    { icon: '✅', title: 'Anyone can mark Resolved', text: 'When a resident sees the issue is fixed, they can mark it Resolved with a note. The full lifecycle is logged on a public timeline.' },
+    { icon: '🚫', title: 'No politics, no money', text: 'No political party affiliation. No advertisements. No selling of data. No paywalls. Ever.' },
+    { icon: '✏️', title: 'Editable like Wikipedia', text: 'Every official\'s contact info can be flagged or corrected by any user. Changes are logged. Truth is collectively maintained.' }
+  ]
+};
+// ============================================================================
+// COMMUNITY CHARTER — visible rules of the system
+// ============================================================================
+
+const CHARTER_TEXT = {
+  title: '📜 Community Charter',
+  intro: 'CivicMap Kharghar is a community-owned platform. Here\'s how it works — transparently and the same way for everyone.',
+  rules: [
+    { icon: '📝', title: 'Anyone can report', text: 'Any resident can report any civic issue in any zone. No login, no gatekeeping. Just facts and location.' },
+    { icon: '🤝', title: '3 upvotes = Verified', text: 'Reports start as "Pending". Once 3 different residents upvote, it becomes "Verified" — meaning the community confirms it\'s a real issue.' },
+    { icon: '⚖️', title: 'Trust-weighted votes', text: 'Active contributors earn trust badges (Bronze/Silver/Gold). Gold members\' votes count 3× — but only after they\'ve consistently reported real issues.' },
+    { icon: '📣', title: 'After 7 days verified → Escalate', text: 'Verified issues that aren\'t resolved within 7 days get a formal escalation email drafted automatically — sent to the responsible department, with MLA and MP CC\'d.' },
+    { icon: '⏳', title: '15-day response window', text: 'Per Maharashtra\'s Citizen Charter, government departments must respond within 15 days. We track this. Breached SLAs are flagged publicly.' },
+    { icon: '✅', title: 'Anyone can mark Resolved', text: 'When a resident sees the issue is fixed, they can mark it Resolved with a note. The full lifecycle is logged on a public timeline.' },
+    { icon: '🚫', title: 'No politics, no money', text: 'No political party affiliation. No advertisements. No selling of data. No paywalls. Ever.' },
+    { icon: '✏️', title: 'Editable like Wikipedia', text: 'Every official\'s contact info can be flagged or corrected by any user. Changes are logged. Truth is collectively maintained.' }
+  ]
+};
+
 // Trust score: awards points for activity
 function awardTrust(points, reason) {
   userState.trustScore = (userState.trustScore || 0) + points;
@@ -1129,7 +1312,85 @@ function go(view, arg) {
   else if (view === 'insights') renderInsights();
   else if (view === 'export') renderExport();
   else if (view === 'reportcard') renderReportCard(arg);
+  else if (view === 'charter') renderCharter();
 }
+
+function renderCharter() {
+  const c = document.getElementById('charter-content');
+  if (!c) return;
+  c.innerHTML = `
+    <div style="margin-bottom:16px">
+      <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.5px">${CHARTER_TEXT.title}</h2>
+      <p style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">${CHARTER_TEXT.intro}</p>
+    </div>
+
+    <div class="section-head">📐 The 8 rules</div>
+    ${CHARTER_TEXT.rules.map((r, i) => `
+      <div class="process-step">
+        <div class="process-num">${i+1}</div>
+        <div class="process-content">
+          <h4>${r.icon} ${r.title}</h4>
+          <p>${r.text}</p>
+        </div>
+      </div>
+    `).join('')}
+
+    <div class="section-head" style="margin-top:24px">⏱️ Service Level Agreements (SLAs)</div>
+    <div class="charter-card">
+      <h3>How long things should take</h3>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(96,165,250,0.3);font-size:12px;color:#1E3A8A">
+          <span><strong>Pending → Verified</strong> (community confirms)</span>
+          <strong>${SLA.VERIFY_HOURS} hours</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(96,165,250,0.3);font-size:12px;color:#1E3A8A">
+          <span><strong>Verified → Escalated</strong> (formal email sent)</span>
+          <strong>${SLA.ESCALATE_DAYS} days</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(96,165,250,0.3);font-size:12px;color:#1E3A8A">
+          <span><strong>Escalated → Response</strong> (per Citizen Charter)</span>
+          <strong>${SLA.RESPOND_DAYS} days</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;color:#1E3A8A">
+          <span><strong>Escalated → Resolution</strong> (per Citizen Charter)</span>
+          <strong>${SLA.RESOLVE_DAYS} days</strong>
+        </div>
+      </div>
+      <p style="margin-top:10px;font-size:11px">When SLAs are breached, the app shows a 🚨 alert and suggests escalating to the next level (MLA → MP → press/RTI).</p>
+    </div>
+
+    <div class="section-head">🛡️ How we prevent abuse</div>
+    <div style="background:#fafaf5;border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;line-height:1.6;color:var(--text)">
+      <strong>Spam filtering:</strong> AI-powered duplicate detection before submission · Trust-weighted votes prevent brigading · Photos required for high-stakes claims · Edit history is permanent · Anyone can flag false data.<br><br>
+      <strong>What we DON'T do:</strong> Take political donations · Run ads · Sell your data · Share names without consent · Allow anonymous personal attacks on individuals.
+    </div>
+
+    <div class="section-head" style="margin-top:24px">🤝 Who can do what</div>
+    <div class="card">
+      <div class="name">Anyone (no login required)</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">Browse, report issues, upvote, mark resolved, log official responses, escalate</p>
+    </div>
+    <div class="card">
+      <div class="name">🥉 Bronze (5+ trust pts)</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">All of above + propose edits to official contact info</p>
+    </div>
+    <div class="card">
+      <div class="name">🥈 Silver (20+ trust pts)</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">All of above + 2× vote weight on verifications</p>
+    </div>
+    <div class="card">
+      <div class="name">🏆 Gold (50+ trust pts)</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">All of above + 3× vote weight (single-vote verification authority) + flag spam reports for review</p>
+    </div>
+
+    <div class="footer" style="margin-top:24px">
+      <strong>This Charter is open source and amendable.</strong><br>
+      Suggest changes via GitHub: github.com/gangwalsanchit1/civicmap-kharghar
+    </div>
+  `;
+}
+
+window.renderCharter = renderCharter;
 
 function setReportField(field, value) {
   state.reportForm[field] = value;
@@ -1218,9 +1479,9 @@ function renderHome() {
     <div id="ai-insight-slot"></div>
 
     <div class="stats-row">
-      <div class="stat-card live"><div class="stat-num">${open}</div><div class="stat-label">🔴 Open</div></div>
-      <div class="stat-card verified"><div class="stat-num">${verified}</div><div class="stat-label">⚠️ Verified</div></div>
-      <div class="stat-card resolved"><div class="stat-num">${resolved}</div><div class="stat-label">✅ Resolved</div></div>
+      <div class="stat-card live"><div class="stat-num" data-target="${open}">0</div><div class="stat-label"><span class="live-dot"></span>Open</div></div>
+      <div class="stat-card verified"><div class="stat-num" data-target="${verified}">0</div><div class="stat-label">⚠️ Verified</div></div>
+      <div class="stat-card resolved"><div class="stat-num" data-target="${resolved}">0</div><div class="stat-label">✅ Resolved</div></div>
     </div>
 
     <div class="section-head">What do you want to do?</div>
@@ -1303,6 +1564,11 @@ function renderHome() {
         <h3>Export & escalate</h3>
         <p>CSV, bulk emails, RTI templates, Lokshahi Din packet</p>
       </button>
+      <button class="action-card" onclick="go('charter')">
+        <span class="icon">📜</span>
+        <h3>How this works</h3>
+        <p>Community Charter, SLAs, rules — full transparency</p>
+      </button>
     </div>
 
     <div class="footer">
@@ -1321,6 +1587,21 @@ function renderHome() {
 
   document.getElementById('home-content').innerHTML = html;
   generateAIInsight();
+  animateCounters();
+}
+
+function animateCounters() {
+  document.querySelectorAll('.stat-num[data-target]').forEach(el => {
+    const target = parseInt(el.getAttribute('data-target')) || 0;
+    if (target === 0) { el.textContent = '0'; return; }
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 30));
+    const interval = setInterval(() => {
+      current += step;
+      if (current >= target) { current = target; clearInterval(interval); }
+      el.textContent = current;
+    }, 30);
+  });
 }
 
 // ============================================================================
@@ -1744,6 +2025,7 @@ function complaintCard(c, expanded) {
   const z = zoneById(c.zone);
   const w = voteWeight();
   const isMine = userState.reported && userState.reported.includes(c.id);
+  const sla = getSLAStatus(c);
   return `
     <div class="complaint-item">
       <div class="complaint-head">
@@ -1756,7 +2038,7 @@ function complaintCard(c, expanded) {
             <span>${timeAgo(c.timestamp)}</span>
             <span class="status-badge status-${c.status}">${c.status}</span>
             ${c.escalated ? '<span class="status-badge" style="background:#FED7AA;color:#9A3412">↗ escalated</span>' : ''}
-            ${c.officialResponses && c.officialResponses.length ? `<span class="status-badge" style="background:#DBEAFE;color:#1E3A8A">💬 ${c.officialResponses.length} response${c.officialResponses.length>1?'s':''}</span>` : ''}
+            ${c.officialResponses && c.officialResponses.length ? `<span class="status-badge" style="background:#DBEAFE;color:#1E3A8A">💬 ${c.officialResponses.length} response${c.officialResponses.length>1?'':''}</span>` : ''}
             ${isMine ? '<span class="status-badge" style="background:#E0E7FF;color:#3730A3">yours</span>' : ''}
             ${c.isDemo ? '<span style="font-size:9px;color:var(--muted);background:#f0f0f0;padding:1px 6px;border-radius:3px">demo</span>' : ''}
           </div>
@@ -1765,6 +2047,8 @@ function complaintCard(c, expanded) {
       <div class="complaint-desc">${c.description}</div>
       ${c.photo ? `<img src="${c.photo}" class="photo-thumb" onclick="viewPhoto('${c.id}')" alt="Evidence">` : ''}
       ${c.reporter ? `<div style="font-size:10px;color:var(--muted);margin-top:6px">— ${c.reporter}</div>` : ''}
+      ${sla ? `<div class="sla-bar sla-${sla.type}"><span class="sla-icon">${sla.icon}</span> ${sla.text}</div>` : ''}
+      ${expanded ? lifecyclePipeline(c) : ''}
       ${c.officialResponses && c.officialResponses.length ? c.officialResponses.map(r => `
         <div class="response-card">
           <strong>💬 ${r.source}</strong>
@@ -1785,7 +2069,7 @@ function complaintCard(c, expanded) {
           ${voted?'✓':'👍'} ${c.upvotes || 0}${!voted && w > 1 ? ` <span class="weight-badge">${w}×</span>` : ''}
         </button>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${!expanded ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintDetail('${c.id}')">📜 History</button>` : ''}
+          ${!expanded ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintDetail('${c.id}')">📜 Details</button>` : ''}
           ${c.status !== 'resolved' ? `
             ${!c.escalated ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleEscalate('${c.id}')">↗ Escalate</button>` : ''}
             <button class="btn" style="font-size:10px;padding:5px 8px" onclick="logOfficialResponse('${c.id}')">💬 Log reply</button>
@@ -2926,7 +3210,7 @@ Object.assign(window, {
   // Share & social
   sharePress, shareReportCard,
   // Report cards
-  renderReportCard,
+  renderReportCard, renderCharter,
   // Modals
   closeModal, toggleNotifPanel, markAllNotifsRead, handleNotifClick,
   // Init
