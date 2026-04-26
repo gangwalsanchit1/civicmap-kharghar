@@ -396,7 +396,7 @@
       </div>
     </div>
     <div class="topbar-actions">
-      <select id="lang-select" class="icon-btn" style="width:auto;padding:0 8px;font-size:11px;font-weight:600;cursor:pointer;background:white;color:var(--text);">
+      <select id="lang-select" onchange="setLanguage(this.value)" class="icon-btn" style="width:auto;padding:0 8px;font-size:11px;font-weight:600;cursor:pointer;background:white;color:var(--text);">
         <option value="en">EN</option>
         <option value="mr">मराठी</option>
         <option value="hi">हिन्दी</option>
@@ -1059,20 +1059,18 @@ async function aiCheckDuplicates(zone, issue, title, description) {
 async function logOfficialResponse(complaintId) {
   const c = complaintCache.complaints[complaintId];
   if (!c) return;
-  const source = prompt('Where did the response come from? (e.g., "Email from PMC", "Reply from CIDCO", "Phone call from ward officer")');
+  const source = prompt('Where did the response come from?');
   if (!source) return;
-  const response = prompt('What did they say? (paste the response or summarize)');
+  const response = prompt('What did they say?');
   if (!response) return;
 
   c.officialResponses = c.officialResponses || [];
-  c.officialResponses.push({
-    source, response, ts: Date.now()
-  });
+  c.officialResponses.push({ source, response, ts: Date.now() });
   c.events = c.events || [];
   c.events.push({ type: 'official_response', ts: Date.now(), note: source });
   await saveComplaints();
   notifyOnActivity(complaintId, 'official_response');
-  toast('✓ Official response logged');
+  toast(t('toastLoggedReply'));
   rerenderCurrentView();
 }
 
@@ -1664,9 +1662,9 @@ function isSubscribed(complaintId) {
 
 async function subscribeToIssue(complaintId) {
   if (!userState.email) {
-    const email = prompt('📧 Get notified when this issue gets verified, escalated, or resolved.\n\nEnter your email (kept private, never shared):');
+    const email = prompt(t('subscribePrompt'));
     if (!email || !email.includes('@')) {
-      if (email) toast('Invalid email');
+      if (email) toast(t('invalidEmail'));
       return;
     }
     userState.email = email.trim();
@@ -1674,14 +1672,14 @@ async function subscribeToIssue(complaintId) {
   userState.subscriptions = userState.subscriptions || {};
   userState.subscriptions[complaintId] = { ts: Date.now(), email: userState.email };
   await saveUser();
-  toast('✓ Subscribed · we\'ll email you on updates');
+  toast(t('toastSubscribed'));
   rerenderCurrentView();
 }
 
 async function unsubscribeFromIssue(complaintId) {
   if (userState.subscriptions) delete userState.subscriptions[complaintId];
   await saveUser();
-  toast('✓ Unsubscribed');
+  toast(t('toastUnsubscribed'));
   rerenderCurrentView();
 }
 
@@ -2396,8 +2394,8 @@ function initMap() {
 
   // Render issue chips
   const chipsEl = document.getElementById('issue-chips');
-  chipsEl.innerHTML = `<button class="chip active" data-issue="all"><span>🗺️</span>All</button>` +
-    ISSUES.map(i => `<button class="chip" data-issue="${i.id}"><span>${i.icon}</span>${i.label}</button>`).join('');
+  chipsEl.innerHTML = `<button class="chip active" data-issue="all"><span>🗺️</span>${t('filterAllIssues')}</button>` +
+    ISSUES.map(i => `<button class="chip" data-issue="${i.id}"><span>${i.icon}</span>${t('cat' + i.id.charAt(0).toUpperCase() + i.id.slice(1))}</button>`).join('');
   chipsEl.querySelectorAll('.chip').forEach(btn => {
     btn.onclick = () => {
       state.issueFilter = btn.dataset.issue;
@@ -2686,9 +2684,9 @@ async function handleUpvote(id) {
   const result = await upvoteComplaint(id);
   if (result && result.ok) {
     const w = result.weight;
-    toast(w > 1 ? `✓ Upvoted (${w}× weight) · +1 trust` : '✓ Upvoted · +1 trust');
+    toast(w > 1 ? `${t('toastUpvoted')} (${w}×)` : t('toastUpvoted'));
     rerenderCurrentView();
-  } else toast('Already voted');
+  } else toast(t('toastAlreadyVoted'));
 }
 
 async function sharePress() {
@@ -2729,6 +2727,7 @@ function complaintCard(c, expanded) {
   const w = voteWeight();
   const isMine = userState.reported && userState.reported.includes(c.id);
   const sla = getSLAStatus(c);
+  const statusKey = 'status' + c.status.charAt(0).toUpperCase() + c.status.slice(1);
   return `
     <div class="complaint-item">
       <div class="complaint-head">
@@ -2739,11 +2738,11 @@ function complaintCard(c, expanded) {
             <span>${z?z.name+' · ':''}${c.sector}</span>
             <span>·</span>
             <span>${timeAgo(c.timestamp)}</span>
-            <span class="status-badge status-${c.status}">${c.status}</span>
+            <span class="status-badge status-${c.status}">${t(statusKey)}</span>
             ${c.escalated ? '<span class="status-badge" style="background:#FED7AA;color:#9A3412">↗ escalated</span>' : ''}
-            ${c.officialResponses && c.officialResponses.length ? `<span class="status-badge" style="background:#DBEAFE;color:#1E3A8A">💬 ${c.officialResponses.length} response${c.officialResponses.length>1?'':''}</span>` : ''}
-            ${isMine ? '<span class="status-badge" style="background:#E0E7FF;color:#3730A3">yours</span>' : ''}
-            ${c.isDemo ? '<span style="font-size:9px;color:var(--muted);background:#f0f0f0;padding:1px 6px;border-radius:3px">demo</span>' : ''}
+            ${c.officialResponses && c.officialResponses.length ? `<span class="status-badge" style="background:#DBEAFE;color:#1E3A8A">💬 ${c.officialResponses.length}</span>` : ''}
+            ${isMine ? `<span class="status-badge" style="background:#E0E7FF;color:#3730A3">${t('yours')}</span>` : ''}
+            ${c.isDemo ? `<span style="font-size:9px;color:var(--muted);background:#f0f0f0;padding:1px 6px;border-radius:3px">${t('demo')}</span>` : ''}
           </div>
         </div>
       </div>
@@ -2766,21 +2765,21 @@ function complaintCard(c, expanded) {
               <div class="timeline-time">${timeAgo(e.ts)}</div>
             </div>`).join('')}
         </div>` : ''}
-      ${c.resolutionNote ? `<div style="margin-top:8px;padding:8px;background:#D1FAE5;border-radius:6px;font-size:11px;color:#065F46"><strong>✅ Resolution:</strong> ${c.resolutionNote}</div>` : ''}
+      ${c.resolutionNote ? `<div style="margin-top:8px;padding:8px;background:#D1FAE5;border-radius:6px;font-size:11px;color:#065F46"><strong>✅</strong> ${c.resolutionNote}</div>` : ''}
       <div class="complaint-actions">
         <button class="upvote-btn ${voted?'voted':''}" onclick="handleUpvote('${c.id}')">
           ${voted?'✓':'👍'} ${c.upvotes || 0}${!voted && w > 1 ? ` <span class="weight-badge">${w}×</span>` : ''}
         </button>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${!expanded ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintDetail('${c.id}')">📜 Details</button>` : ''}
+          ${!expanded ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintDetail('${c.id}')">📜 ${t('btnDetails')}</button>` : ''}
           ${c.status !== 'resolved' ? `
-            <button class="btn ${isSubscribed(c.id) ? '' : ''}" style="font-size:10px;padding:5px 8px" onclick="${isSubscribed(c.id) ? `unsubscribeFromIssue('${c.id}')` : `subscribeToIssue('${c.id}')`}">${isSubscribed(c.id) ? '🔕 Unsub' : '🔔 Subscribe'}</button>
-            ${!c.escalated ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleEscalate('${c.id}')">↗ Escalate</button>` : ''}
-            ${c.escalated && getSLAStatus(c)?.type === 'breach' ? `<button class="btn" style="font-size:10px;padding:5px 8px;background:#FEE2E2;color:#991B1B;border-color:#FCA5A5" onclick="pressPitch('${c.id}')">📰 Press</button>` : ''}
-            <button class="btn" style="font-size:10px;padding:5px 8px" onclick="logOfficialResponse('${c.id}')">💬 Log reply</button>
-            <button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleResolvedPrompt('${c.id}')">✓ Resolved</button>
+            <button class="btn" style="font-size:10px;padding:5px 8px" onclick="${isSubscribed(c.id) ? `unsubscribeFromIssue('${c.id}')` : `subscribeToIssue('${c.id}')`}">${isSubscribed(c.id) ? '🔕 ' + t('btnUnsubscribe') : '🔔 ' + t('btnSubscribe')}</button>
+            ${!c.escalated ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleEscalate('${c.id}')">↗ ${t('btnEscalate')}</button>` : ''}
+            ${c.escalated && getSLAStatus(c)?.type === 'breach' ? `<button class="btn" style="font-size:10px;padding:5px 8px;background:#FEE2E2;color:#991B1B;border-color:#FCA5A5" onclick="pressPitch('${c.id}')">📰 ${t('btnPress')}</button>` : ''}
+            <button class="btn" style="font-size:10px;padding:5px 8px" onclick="logOfficialResponse('${c.id}')">💬 ${t('btnLogReply')}</button>
+            <button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleResolvedPrompt('${c.id}')">✓ ${t('btnResolved')}</button>
           ` : ''}
-          <button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintAction('${c.id}')">Who to call ›</button>
+          <button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintAction('${c.id}')">${t('btnWhoToCall')} ›</button>
         </div>
       </div>
     </div>`;
@@ -2792,7 +2791,7 @@ function eventLabel(t) {
 
 async function handleEscalate(id) {
   await escalateComplaint(id);
-  toast('↗ Escalated — draft email ready');
+  toast(t('toastEscalated'));
   const c = complaintCache.complaints[id];
   if (c) {
     const admin = ADMIN[c.issue];
@@ -2805,10 +2804,10 @@ async function handleEscalate(id) {
 }
 
 async function handleResolvedPrompt(id) {
-  const note = prompt('Add a resolution note (optional):\nE.g., "Water supply restored after CIDCO intervention"');
+  const note = prompt('Resolution note (optional):');
   if (note === null) return;
   await markResolved(id, note || '');
-  toast('✓ Marked resolved · +5 trust');
+  toast(t('toastResolved'));
   rerenderCurrentView();
 }
 
@@ -2867,51 +2866,51 @@ function renderReportForm() {
   const f = state.reportForm;
   const html = `
     <div style="text-align:center;margin-bottom:16px">
-      <h2 style="font-size:22px;font-weight:700">📣 Report a civic issue</h2>
-      <p style="font-size:12px;color:var(--muted);margin-top:4px">Takes 30 seconds · Visible to everyone · Powers collective action</p>
+      <h2 style="font-size:22px;font-weight:700">${t('rfTitle')}</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">${t('rfSubtitle')}</p>
     </div>
 
     <div class="form-step">
-      <h3><span class="step-num">1</span> Which area?</h3>
+      <h3><span class="step-num">1</span> ${t('rfStep1')}</h3>
       <div class="grid-select">
         ${ZONES.map(z => `<button class="grid-btn ${f.zone===z.id?'selected':''}" onclick="setReportField('zone','${z.id}')"><strong>${z.name}</strong><div style="font-size:10px;opacity:0.8;margin-top:2px">${z.sectorRange}</div></button>`).join('')}
       </div>
-      ${f.zone ? `<div style="margin-top:10px"><label class="form-label">Specific sector / landmark (optional)</label><input class="form-input" id="f-sector" placeholder="e.g., Sector 20, near Utsav Chowk" value="${f.sector||''}" oninput="setReportField('sector', this.value)"></div>` : ''}
+      ${f.zone ? `<div style="margin-top:10px"><label class="form-label">${t('rfSpecific')}</label><input class="form-input" id="f-sector" placeholder="e.g., Sector 20" value="${f.sector||''}" oninput="setReportField('sector', this.value)"></div>` : ''}
     </div>
 
     ${f.zone ? `
     <div class="form-step">
-      <h3><span class="step-num">2</span> What's the issue?</h3>
+      <h3><span class="step-num">2</span> ${t('rfStep2')}</h3>
       <div class="grid-select">
-        ${ISSUES.map(i => `<button class="grid-btn ${f.issue===i.id?'selected':''}" onclick="setReportField('issue','${i.id}')"><span class="big">${i.icon}</span>${i.label}</button>`).join('')}
+        ${ISSUES.map(i => `<button class="grid-btn ${f.issue===i.id?'selected':''}" onclick="setReportField('issue','${i.id}')"><span class="big">${i.icon}</span>${t('cat' + i.id.charAt(0).toUpperCase() + i.id.slice(1))}</button>`).join('')}
       </div>
     </div>` : ''}
 
     ${f.issue ? `
     <div class="form-step">
-      <h3><span class="step-num">3</span> Describe it</h3>
-      <label class="form-label">Short title (one line)</label>
-      <input class="form-input" id="f-title" placeholder="e.g., No water for 3 days" value="${f.title||''}" oninput="setReportField('title', this.value)">
-      <button class="btn" style="font-size:10px;padding:6px 10px;margin-top:6px" onclick="aiSuggestTitle()">✨ AI: suggest title from description</button>
-      <div class="form-hint">Keep it specific and factual.</div>
-      <label class="form-label" style="margin-top:12px">Details</label>
-      <textarea class="form-textarea" id="f-desc" placeholder="What's happening? How long? Who's affected?" oninput="setReportField('description', this.value)">${f.description||''}</textarea>
-      <label class="form-label" style="margin-top:12px">📷 Photo evidence (optional, max 800KB)</label>
+      <h3><span class="step-num">3</span> ${t('rfStep3')}</h3>
+      <label class="form-label">${t('rfShortTitle')}</label>
+      <input class="form-input" id="f-title" placeholder="${t('rfTitlePlaceholder')}" value="${f.title||''}" oninput="setReportField('title', this.value)">
+      <button class="btn" style="font-size:10px;padding:6px 10px;margin-top:6px" onclick="aiSuggestTitle()">${t('rfAiSuggest')}</button>
+      <div class="form-hint">${t('rfTitleHint')}</div>
+      <label class="form-label" style="margin-top:12px">${t('rfDetails')}</label>
+      <textarea class="form-textarea" id="f-desc" placeholder="${t('rfDetailsPlaceholder')}" oninput="setReportField('description', this.value)">${f.description||''}</textarea>
+      <label class="form-label" style="margin-top:12px">${t('rfPhoto')}</label>
       <div class="upload-area ${f.photo?'has-photo':''}" onclick="document.getElementById('f-photo-input').click()">
-        ${f.photo ? `<img src="${f.photo}" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover"><button class="btn" style="margin-top:6px" onclick="event.stopPropagation();setReportField('photo',null)">Remove</button>` : `<div style="font-size:24px">📷</div><div style="font-size:12px;margin-top:4px;color:var(--muted)">Tap to add photo</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Auto-compressed to fit</div>`}
+        ${f.photo ? `<img src="${f.photo}" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover"><button class="btn" style="margin-top:6px" onclick="event.stopPropagation();setReportField('photo',null)">${t('rfRemove')}</button>` : `<div style="font-size:24px">📷</div><div style="font-size:12px;margin-top:4px;color:var(--muted)">${t('rfPhotoTap')}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">${t('rfPhotoCompress')}</div>`}
       </div>
       <input type="file" id="f-photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
-      <label class="form-label" style="margin-top:12px">Your name or society (optional)</label>
-      <input class="form-input" id="f-contact" placeholder="e.g., Resident, Orchid Society" value="${f.contact||''}" oninput="setReportField('contact', this.value)">
-      <div class="form-hint">Helps with credibility. No personal contact details will be shown publicly.</div>
+      <label class="form-label" style="margin-top:12px">${t('rfYourName')}</label>
+      <input class="form-input" id="f-contact" placeholder="${t('rfYourNamePlaceholder')}" value="${f.contact||''}" oninput="setReportField('contact', this.value)">
+      <div class="form-hint">${t('rfNameHint')}</div>
     </div>` : ''}
 
     <div id="submit-wrap" style="display:${f.zone && f.issue && f.title && f.description ? 'block' : 'none'}">
       <button class="btn primary" style="width:100%;padding:14px;font-size:14px" onclick="submitReport()">
-        🚀 Submit report — it goes live for everyone
+        ${t('btnSubmit')}
       </button>
       <div style="margin-top:10px;padding:10px;background:#FFF4ED;border-radius:8px;font-size:11px;color:#9A3412;line-height:1.5">
-        <strong>How verification works:</strong> Your report starts as "Pending". 3 upvotes → "Verified". Anyone can mark it "Resolved" when fixed. All changes are logged in edit history.
+        <strong>${t('rfHowVerify')}</strong> ${t('rfHowVerifyText')}
       </div>
     </div>
   `;
@@ -2972,11 +2971,10 @@ async function aiSuggestTitle() {
 
 async function submitReport() {
   const f = state.reportForm;
-  if (!f.zone || !f.issue || !f.title || !f.description) return toast('Fill in all fields');
+  if (!f.zone || !f.issue || !f.title || !f.description) return toast(t('toastFillFields'));
 
   // Check for duplicates first
   if (!f.confirmedUnique) {
-    toast('✨ Checking for similar reports...');
     const dupes = await aiCheckDuplicates(f.zone, f.issue, f.title, f.description);
     if (dupes.length > 0) {
       showDuplicateWarning(dupes);
@@ -2985,13 +2983,12 @@ async function submitReport() {
   }
 
   const id = await addComplaint({
-    zone: f.zone, sector: f.sector || 'Not specified', issue: f.issue,
-    title: f.title, description: f.description, reporter: f.contact || 'Resident',
+    zone: f.zone, sector: f.sector || t('notSpecified'), issue: f.issue,
+    title: f.title, description: f.description, reporter: f.contact || t('resident'),
     photo: f.photo || null
   });
   state.reportForm = { zone: null, sector: null, issue: null, title: '', description: '', contact: '', photo: null, confirmedUnique: false };
-  const msg = voteWeight() > 1 ? `✓ Submitted with ${voteWeight()}× weight · +3 trust` : '✓ Report submitted! +3 trust';
-  toast(msg);
+  toast(t('toastSubmitted'));
   go('map');
   setMapMode('heatmap');
   setTimeout(() => selectZone(complaintCache.complaints[id].zone), 300);
@@ -3768,30 +3765,29 @@ function renderComplaintsList() {
 
   const html = `
     <div style="margin-bottom:14px">
-      <h2 style="font-size:20px;font-weight:700">Reports (${filtered.length}${filtered.length !== all.length ? ` of ${all.length}` : ''})</h2>
-      <p style="font-size:12px;color:var(--muted)">Upvote to help verify · Mark resolved when fixed</p>
+      <h2 style="font-size:20px;font-weight:700">${t('actAllIssues')} (${filtered.length}${filtered.length !== all.length ? ` / ${all.length}` : ''})</h2>
     </div>
 
-    <input class="search-bar" id="list-search" placeholder="🔍 Search by title, sector, or zone..." value="${listFilter.query}" oninput="listSetQuery(this.value)" style="margin-bottom:10px">
+    <input class="search-bar" id="list-search" placeholder="${t('searchPlaceholder')}" value="${listFilter.query}" oninput="listSetQuery(this.value)" style="margin-bottom:10px">
 
     <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none">
-      <button class="chip ${listFilter.scope==='all'?'active':''}" onclick="listSetScope('all')">Everyone</button>
-      <button class="chip ${listFilter.scope==='following'?'active':''}" onclick="listSetScope('following')">📌 Following (${followingCount})</button>
-      <button class="chip ${listFilter.scope==='mine'?'active':''}" onclick="listSetScope('mine')">👤 My reports (${mineCount})</button>
+      <button class="chip ${listFilter.scope==='all'?'active':''}" onclick="listSetScope('all')">${t('filterEveryone')}</button>
+      <button class="chip ${listFilter.scope==='following'?'active':''}" onclick="listSetScope('following')">${t('filterFollowing')} (${followingCount})</button>
+      <button class="chip ${listFilter.scope==='mine'?'active':''}" onclick="listSetScope('mine')">${t('filterMine')} (${mineCount})</button>
     </div>
 
     <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none">
-      <button class="chip ${listFilter.status==='all'?'active':''}" onclick="listSetStatus('all')">All status</button>
-      <button class="chip ${listFilter.status==='pending'?'active':''}" onclick="listSetStatus('pending')">🟡 Pending</button>
-      <button class="chip ${listFilter.status==='verified'?'active':''}" onclick="listSetStatus('verified')">🔴 Verified</button>
-      <button class="chip ${listFilter.status==='resolved'?'active':''}" onclick="listSetStatus('resolved')">✅ Resolved</button>
+      <button class="chip ${listFilter.status==='all'?'active':''}" onclick="listSetStatus('all')">${t('filterAllStatus')}</button>
+      <button class="chip ${listFilter.status==='pending'?'active':''}" onclick="listSetStatus('pending')">🟡 ${t('statusPending')}</button>
+      <button class="chip ${listFilter.status==='verified'?'active':''}" onclick="listSetStatus('verified')">🔴 ${t('statusVerified')}</button>
+      <button class="chip ${listFilter.status==='resolved'?'active':''}" onclick="listSetStatus('resolved')">✅ ${t('statusResolved')}</button>
     </div>
     <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:14px;scrollbar-width:none">
-      <button class="chip ${listFilter.issue==='all'?'active':''}" onclick="listSetIssue('all')">All issues</button>
-      ${ISSUES.map(i => `<button class="chip ${listFilter.issue===i.id?'active':''}" onclick="listSetIssue('${i.id}')"><span>${i.icon}</span>${i.label}</button>`).join('')}
+      <button class="chip ${listFilter.issue==='all'?'active':''}" onclick="listSetIssue('all')">${t('filterAllIssues')}</button>
+      ${ISSUES.map(i => `<button class="chip ${listFilter.issue===i.id?'active':''}" onclick="listSetIssue('${i.id}')"><span>${i.icon}</span>${t('cat' + i.id.charAt(0).toUpperCase() + i.id.slice(1))}</button>`).join('')}
     </div>
 
-    ${filtered.length ? filtered.map(c => complaintCard(c)).join('') : `<div class="empty-state"><div class="big">🔎</div><p>${listFilter.scope === 'mine' ? "You haven't reported any issues yet.<br>Tap 📣 Report to add your first one." : listFilter.scope === 'following' ? "You're not following any issues yet.<br>Upvote issues to track their progress." : "No reports match these filters."}</p></div>`}
+    ${filtered.length ? filtered.map(c => complaintCard(c)).join('') : `<div class="empty-state"><div class="big">🔎</div><p>${listFilter.scope === 'mine' ? t('noReportsYet') : "No reports match these filters."}</p></div>`}
   `;
   document.getElementById('complaints-content').innerHTML = html;
   // restore focus to search
@@ -3822,7 +3818,7 @@ function closePanel() {
 // ACTIONS
 // ============================================================================
 
-function copyText(text) { navigator.clipboard.writeText(text).then(() => toast('✓ Copied')); }
+function copyText(text) { navigator.clipboard.writeText(text).then(() => toast(t('toastCopied'))); }
 function callPhone(phone) {
   const clean = (phone||'').split(' ')[0].replace(/[^0-9+]/g,'');
   if (!clean) return toast('No number');
