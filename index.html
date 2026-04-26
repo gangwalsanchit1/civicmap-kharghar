@@ -236,13 +236,12 @@
   .pipeline-stage.done { color: var(--green); }
   .pipeline-stage.active { color: var(--saffron-dark); }
   .pipeline-stage.skipped { color: var(--muted-light); opacity: 0.4; }
-  .pipeline-stage::before { content: ''; display: block; width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 4px; background: #f0ece0; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 20px; }
-  .pipeline-stage.done::before { background: var(--green); border-color: var(--green); content: '✓'; color: white; }
-  .pipeline-stage.active::before { background: var(--saffron); border-color: var(--saffron); content: '●'; color: white; animation: pulse 2s infinite; }
+  .pipeline-stage::before { content: ''; display: block; width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 4px; background: #f0ece0; border: 2px solid var(--border); }
+  .pipeline-stage.done::before { background: var(--green); border-color: var(--green); }
+  .pipeline-stage.active::before { background: var(--saffron); border-color: var(--saffron); animation: pulse 2s infinite; }
   .pipeline-arrow { color: var(--border); font-size: 14px; padding: 0 2px; align-self: flex-start; margin-top: 8px; }
 
   /* Animated counter */
-  .stat-num { display: inline-block; transition: transform 0.3s ease; }
   .stat-num.bump { transform: scale(1.3); color: var(--saffron); }
 
   /* Activity pulse */
@@ -463,6 +462,11 @@
     <!-- CHARTER VIEW -->
     <div id="view-charter" class="view hidden">
       <div class="home" id="charter-content"><!-- rendered by JS --></div>
+    </div>
+
+    <!-- RESPONSES FEED VIEW -->
+    <div id="view-responses" class="view hidden">
+      <div class="home" id="responses-content"><!-- rendered by JS --></div>
     </div>
   </div>
 
@@ -1175,10 +1179,207 @@ function lifecyclePipeline(c) {
 }
 
 // ============================================================================
+// SUBSCRIPTIONS — Get notified when issues update (email/local-only for now)
+// ============================================================================
+
+function isSubscribed(complaintId) {
+  return userState.subscriptions && userState.subscriptions[complaintId];
+}
+
+async function subscribeToIssue(complaintId) {
+  if (!userState.email) {
+    const email = prompt('📧 Get notified when this issue gets verified, escalated, or resolved.\n\nEnter your email (kept private, never shared):');
+    if (!email || !email.includes('@')) {
+      if (email) toast('Invalid email');
+      return;
+    }
+    userState.email = email.trim();
+  }
+  userState.subscriptions = userState.subscriptions || {};
+  userState.subscriptions[complaintId] = { ts: Date.now(), email: userState.email };
+  await saveUser();
+  toast('✓ Subscribed · we\'ll email you on updates');
+  rerenderCurrentView();
+}
+
+async function unsubscribeFromIssue(complaintId) {
+  if (userState.subscriptions) delete userState.subscriptions[complaintId];
+  await saveUser();
+  toast('✓ Unsubscribed');
+  rerenderCurrentView();
+}
+
+// ============================================================================
+// PRESS PITCH — One-click email to journalists for breached issues
+// ============================================================================
+
+const PRESS_CONTACTS = [
+  { name: 'Free Press Journal — Navi Mumbai', email: 'fpjnavimumbai@gmail.com' },
+  { name: 'Mid-Day — City Desk', email: 'editor@mid-day.com' },
+  { name: 'Lokmat Times — Navi Mumbai', email: 'navimumbai@lokmat.com' },
+  { name: 'Hindustan Times — Navi Mumbai', email: 'htnavimumbai@hindustantimes.com' },
+  { name: 'The Hindu — Mumbai Bureau', email: 'mumbai@thehindu.co.in' }
+];
+
+function pressPitch(complaintId) {
+  const c = complaintCache.complaints[complaintId];
+  if (!c) return;
+  const z = zoneById(c.zone);
+  const iss = issueById(c.issue);
+  const escalatedAt = (c.events || []).find(e => e.type === 'escalated')?.ts;
+  const daysSince = escalatedAt ? Math.floor((Date.now() - escalatedAt) / 86400000) : 0;
+
+  const subject = `Civic story tip: ${daysSince}+ days unresolved ${iss.label} issue in Kharghar`;
+  const body = `Dear Editor,
+
+I'm a Kharghar resident reaching out about a verified civic issue that has gone unresolved despite formal escalation to the responsible authority.
+
+ISSUE: ${c.title}
+LOCATION: ${z?.name}, ${c.sector}, Kharghar
+CATEGORY: ${iss.label}
+COMMUNITY VERIFICATION: ${c.upvotes} resident upvotes
+REPORTED: ${new Date(c.timestamp).toLocaleDateString('en-IN')}
+ESCALATED: ${escalatedAt ? new Date(escalatedAt).toLocaleDateString('en-IN') : 'Yes'}
+${escalatedAt ? `DAYS SINCE ESCALATION: ${daysSince} (Citizen Charter SLA: 15 days for response, 30 for resolution)` : ''}
+OFFICIAL RESPONSE LOGGED: ${c.officialResponses?.length || 0}
+
+DETAILS:
+${c.description}
+
+CONTEXT WORTH NOTING:
+- Panvel Municipal Corporation has been under IAS Administrator rule since 2022 (no elected corporators)
+- This issue and ${getAllComplaints().filter(x => x.escalated && x.status !== 'resolved').length - 1}+ others have been formally escalated to the relevant departments with no resolution
+- Public, community-verified data available at: civicmap.co.in
+- Issue reference: CivicMap-${c.id}
+
+I'm happy to share full data, original timestamps, photos, and connect you with other affected residents.
+
+Verifiable through CivicMap Kharghar — an open-source civic accountability platform.
+
+Best regards,
+[Your name]
+[Your sector / contact]`;
+
+  const ccList = PRESS_CONTACTS.map(p => p.email).join(',');
+  window.location.href = `mailto:?bcc=${ccList}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  toast('✓ Press pitch drafted to 5 outlets');
+}
+
+// ============================================================================
+// AUTO-NUDGE — Reminds reporter to escalate stale verified issues
+// ============================================================================
+
+function checkAutoNudges() {
+  if (!userState.reported || userState.reported.length === 0) return;
+  const day = 86400000;
+  const now = Date.now();
+
+  userState.reported.forEach(id => {
+    const c = complaintCache.complaints[id];
+    if (!c || c.status !== 'verified' || c.escalated) return;
+    const verifiedAt = (c.events || []).find(e => e.type === 'verified')?.ts;
+    if (!verifiedAt) return;
+    const daysSince = (now - verifiedAt) / day;
+
+    // Nudge between 7-8 days post-verification
+    if (daysSince >= 7 && daysSince < 8) {
+      const alreadyNudged = (userState.notifications || []).some(n => n.id && n.id.startsWith('nudge_' + id));
+      if (alreadyNudged) return;
+      addNotification({
+        id: 'nudge_' + id + '_' + Date.now(),
+        type: 'nudge',
+        title: '⏰ Time to escalate your verified issue',
+        body: `"${c.title}" was verified ${Math.floor(daysSince)} days ago. Tap to escalate it formally.`,
+        link: 'complaint:' + id
+      });
+    }
+  });
+}
+
+// ============================================================================
+// RESPONSES FEED VIEW — public log of all official replies
+// ============================================================================
+
+function renderResponses() {
+  const all = getAllComplaints();
+  const withResponses = all.filter(c => c.officialResponses && c.officialResponses.length > 0)
+    .sort((a, b) => {
+      const aLast = Math.max(...a.officialResponses.map(r => r.ts));
+      const bLast = Math.max(...b.officialResponses.map(r => r.ts));
+      return bLast - aLast;
+    });
+  const breached = all.filter(c => {
+    if (c.status === 'resolved' || !c.escalated) return false;
+    const sla = getSLAStatus(c);
+    return sla && sla.type === 'breach';
+  });
+
+  // Group responses by department
+  const byDept = {};
+  all.forEach(c => {
+    if (!c.officialResponses || c.officialResponses.length === 0) return;
+    const admin = ADMIN[c.issue];
+    const dept = admin?.body || 'Unknown';
+    if (!byDept[dept]) byDept[dept] = { count: 0, issues: 0, responses: 0 };
+    byDept[dept].issues++;
+    byDept[dept].responses += c.officialResponses.length;
+  });
+
+  const containerEl = document.getElementById('responses-content');
+  if (!containerEl) return;
+  containerEl.innerHTML = `
+    <div style="margin-bottom:16px">
+      <h2 style="font-size:22px;font-weight:700">💬 Government Response Log</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">Public record of every reply from departments. Pressure works through transparency.</p>
+    </div>
+
+    <div class="stats-row" style="margin-bottom:14px">
+      <div class="stat-card"><div class="stat-num">${withResponses.length}</div><div class="stat-label">Issues with reply</div></div>
+      <div class="stat-card live"><div class="stat-num">${breached.length}</div><div class="stat-label">SLA Breached</div></div>
+      <div class="stat-card resolved"><div class="stat-num">${withResponses.reduce((s, c) => s + c.officialResponses.length, 0)}</div><div class="stat-label">Total replies</div></div>
+    </div>
+
+    ${Object.keys(byDept).length ? `
+      <div class="section-head">📊 Response rate by department</div>
+      ${Object.entries(byDept).map(([dept, stats]) => `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="name">${dept}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${stats.issues} issue${stats.issues===1?'':'s'} responded to · ${stats.responses} total replies</div>
+            </div>
+            <div style="background:var(--green);color:white;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700">RESPONSIVE</div>
+          </div>
+        </div>
+      `).join('')}
+    ` : ''}
+
+    ${breached.length > 0 ? `
+      <div class="section-head" style="margin-top:20px">🚨 Breached SLAs (no response in 15+ days)</div>
+      ${breached.slice(0, 5).map(c => complaintCard(c)).join('')}
+      ${breached.length > 5 ? `<div style="text-align:center;padding:10px;color:var(--muted);font-size:12px">+ ${breached.length - 5} more breached issues</div>` : ''}
+    ` : ''}
+
+    <div class="section-head" style="margin-top:20px">💬 Recent official responses</div>
+    ${withResponses.length ? withResponses.slice(0, 10).map(c => complaintCard(c)).join('') : `
+      <div class="empty-state">
+        <div class="big">📭</div>
+        <p>No official responses logged yet.<br>When residents receive replies from PMC/CIDCO, they'll appear here.</p>
+      </div>
+    `}
+  `;
+}
+
+window.subscribeToIssue = subscribeToIssue;
+window.unsubscribeFromIssue = unsubscribeFromIssue;
+window.pressPitch = pressPitch;
+window.renderResponses = renderResponses;
+
+// ============================================================================
 // COMMUNITY CHARTER — visible rules of the system
 // ============================================================================
 
-const CHARTER_TEXT = {
+const CHARTER_DATA = {
   title: '📜 Community Charter',
   intro: 'CivicMap Kharghar is a community-owned platform. Here\'s how it works — transparently and the same way for everyone.',
   rules: [
@@ -1192,6 +1393,18 @@ const CHARTER_TEXT = {
     { icon: '✏️', title: 'Editable like Wikipedia', text: 'Every official\'s contact info can be flagged or corrected by any user. Changes are logged. Truth is collectively maintained.' }
   ]
 };
+
+// Trust score: awards points for activity
+function awardTrust(points, reason) {
+  userState.trustScore = (userState.trustScore || 0) + points;
+  saveUser();
+}
+function getTrustTier(score) {
+  if (score >= 50) return { tier: 'gold', icon: '🏆', label: 'Trusted Contributor', weight: 3 };
+  if (score >= 20) return { tier: 'silver', icon: '🥈', label: 'Active Citizen', weight: 2 };
+  if (score >= 5) return { tier: 'bronze', icon: '🥉', label: 'Contributor', weight: 1 };
+  return null;
+}
 // ============================================================================
 // COMMUNITY CHARTER — visible rules of the system
 // ============================================================================
@@ -1313,6 +1526,7 @@ function go(view, arg) {
   else if (view === 'export') renderExport();
   else if (view === 'reportcard') renderReportCard(arg);
   else if (view === 'charter') renderCharter();
+  else if (view === 'responses') renderResponses();
 }
 
 function renderCharter() {
@@ -1320,12 +1534,12 @@ function renderCharter() {
   if (!c) return;
   c.innerHTML = `
     <div style="margin-bottom:16px">
-      <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.5px">${CHARTER_TEXT.title}</h2>
-      <p style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">${CHARTER_TEXT.intro}</p>
+      <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.5px">${CHARTER_DATA.title}</h2>
+      <p style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">${CHARTER_DATA.intro}</p>
     </div>
 
     <div class="section-head">📐 The 8 rules</div>
-    ${CHARTER_TEXT.rules.map((r, i) => `
+    ${CHARTER_DATA.rules.map((r, i) => `
       <div class="process-step">
         <div class="process-num">${i+1}</div>
         <div class="process-content">
@@ -1553,6 +1767,11 @@ function renderHome() {
         <span class="icon">📊</span>
         <h3>Report cards</h3>
         <p>Grades for MLA, MP, PMC — accountability scorecards</p>
+      </button>
+      <button class="action-card" onclick="go('responses')">
+        <span class="icon">💬</span>
+        <h3>Response log</h3>
+        <p>Public record of every government reply received</p>
       </button>
       <button class="action-card" onclick="go('insights')">
         <span class="icon">📈</span>
@@ -2071,7 +2290,9 @@ function complaintCard(c, expanded) {
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${!expanded ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="openComplaintDetail('${c.id}')">📜 Details</button>` : ''}
           ${c.status !== 'resolved' ? `
+            <button class="btn ${isSubscribed(c.id) ? '' : ''}" style="font-size:10px;padding:5px 8px" onclick="${isSubscribed(c.id) ? `unsubscribeFromIssue('${c.id}')` : `subscribeToIssue('${c.id}')`}">${isSubscribed(c.id) ? '🔕 Unsub' : '🔔 Subscribe'}</button>
             ${!c.escalated ? `<button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleEscalate('${c.id}')">↗ Escalate</button>` : ''}
+            ${c.escalated && getSLAStatus(c)?.type === 'breach' ? `<button class="btn" style="font-size:10px;padding:5px 8px;background:#FEE2E2;color:#991B1B;border-color:#FCA5A5" onclick="pressPitch('${c.id}')">📰 Press</button>` : ''}
             <button class="btn" style="font-size:10px;padding:5px 8px" onclick="logOfficialResponse('${c.id}')">💬 Log reply</button>
             <button class="btn" style="font-size:10px;padding:5px 8px" onclick="handleResolvedPrompt('${c.id}')">✓ Resolved</button>
           ` : ''}
@@ -3239,6 +3460,7 @@ document.addEventListener('click', (e) => {
     await loadAll();
     setupModals();
     updateNotifDot();
+    checkAutoNudges();  // Check if user has stale verified issues to escalate
     renderHome();
   } catch (e) {
     console.error('Init error:', e);
