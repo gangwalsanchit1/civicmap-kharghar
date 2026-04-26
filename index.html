@@ -43,9 +43,11 @@
   .logo-icon { font-size: 22px; }
   h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; background: linear-gradient(135deg, var(--saffron), var(--green)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .tagline { font-size: 10px; color: var(--muted); margin-top: 1px; }
-  .topbar-actions { display: flex; gap: 6px; }
+  .topbar-actions { display: flex; gap: 6px; align-items: center; }
   .icon-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: white; font-size: 13px; cursor: pointer; color: var(--muted); font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .icon-btn:hover { background: #fafaf5; }
+  #lang-select { height: 32px; border-radius: 16px; border: 1px solid var(--border); padding: 0 10px; min-width: 60px; outline: none; appearance: none; -webkit-appearance: none; background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpath fill='%236B6B6B' d='M0 0l4 6 4-6z'/%3E%3C/svg%3E") no-repeat right 8px center; padding-right: 22px; font-family: inherit; }
+  #lang-select:hover { background-color: #fafaf5; }
 
   /* ===== Main area (swappable views) ===== */
   .main { flex: 1; position: relative; overflow: hidden; }
@@ -394,6 +396,11 @@
       </div>
     </div>
     <div class="topbar-actions">
+      <select id="lang-select" class="icon-btn" style="width:auto;padding:0 8px;font-size:11px;font-weight:600;cursor:pointer;background:white;color:var(--text);">
+        <option value="en">EN</option>
+        <option value="mr">मराठी</option>
+        <option value="hi">हिन्दी</option>
+      </select>
       <button class="icon-btn notif-btn" id="notif-btn" title="Notifications">
         🔔
         <span class="notif-dot" id="notif-dot" style="display:none"></span>
@@ -1092,6 +1099,475 @@ async function addComplaint(data) {
 }
 
 // ============================================================================
+// INTERNATIONALIZATION — English / Marathi / Hindi
+// ============================================================================
+// Add new languages by adding a new key to TRANSLATIONS with all string keys.
+// Use t('key') in any rendering function to get the translated string.
+
+const TRANSLATIONS = {
+  en: {
+    // Header
+    appName: 'CivicMap Kharghar',
+    appTagline: 'Citizen-powered civic accountability · Open source',
+
+    // Hero
+    heroTitle: "Know who's responsible. Take action together.",
+    heroBody: "Civic issues in Kharghar don't get fixed because we don't know who to call, and complaints stay invisible. This changes both — verified officials on a map, live issue tracking that anyone can contribute to.",
+
+    // New user banner
+    newUserTitle: '⚠️ Important context: Kharghar has no elected corporators',
+    newUserBody1: 'PMC has been under IAS Administrator rule since 2022. Elections: 2026.',
+    newUserBody2: 'Your chain of accountability: Dept Officer → PMC Commissioner → MLA → MP.',
+    newUserBody3: 'This app gives you every contact, verified from official sources.',
+
+    // Stats
+    statOpen: 'Open',
+    statVerified: 'Verified',
+    statResolved: 'Resolved',
+
+    // Section heads
+    sectionAction: 'What do you want to do?',
+    sectionHotspots: '🔥 Current hotspots',
+    sectionRecent: 'Recent reports',
+    sectionPower: '📊 Power tools',
+
+    // Action cards
+    actReport: 'Report an issue',
+    actReportSub: 'Water outage, pothole, garbage — put it on the map in 30 seconds',
+    actLiveMap: 'Live issue map',
+    actLiveMapSub: 'See where complaints are piling up across Kharghar right now',
+    actWho: "Who's responsible?",
+    actWhoSub: 'MLA, MP, dept officers — verified contacts for every issue',
+    actAllIssues: 'All open issues',
+    actAllIssuesSub: 'Browse, upvote, and help verify complaints from other residents',
+    actReportCards: 'Report cards',
+    actReportCardsSub: 'Grades for MLA, MP, PMC — accountability scorecards',
+    actResponses: 'Response log',
+    actResponsesSub: 'Public record of every government reply received',
+    actInsights: 'Data insights',
+    actInsightsSub: 'Trends, patterns, and AI analysis of civic issues',
+    actExport: 'Export & escalate',
+    actExportSub: 'CSV, bulk emails, RTI templates, Lokshahi Din packet',
+    actCharter: 'How this works',
+    actCharterSub: 'Community Charter, SLAs, rules — full transparency',
+
+    // Press banner
+    pressShareTitle: 'Share with press or social media',
+    pressShareSub: "Generate a shareable snapshot of Kharghar's civic health",
+
+    // Bottom nav
+    navHome: 'Home',
+    navMap: 'Map',
+    navReport: 'Report',
+    navIssues: 'Issues',
+
+    // Status
+    statusPending: 'pending',
+    statusVerified: 'verified',
+    statusResolved: 'resolved',
+
+    // Issue categories
+    catWater: 'Water',
+    catRoads: 'Roads',
+    catDrainage: 'Drainage',
+    catSanitation: 'Garbage',
+    catElectricity: 'Power',
+    catEncroachment: 'Encroachment',
+    catParks: 'Parks',
+    catTraffic: 'Traffic',
+    catSafety: 'Safety',
+
+    // Buttons
+    btnUpvote: 'Upvote',
+    btnDetails: 'Details',
+    btnSubscribe: 'Subscribe',
+    btnUnsubscribe: 'Unsub',
+    btnEscalate: 'Escalate',
+    btnLogReply: 'Log reply',
+    btnResolved: 'Resolved',
+    btnWhoToCall: 'Who to call',
+    btnCopy: 'Copy',
+    btnCallNow: 'Call now',
+    btnEmail: 'Email',
+    btnPress: 'Press',
+    btnReportHere: 'Report issue here',
+    btnSubmit: '🚀 Submit report — it goes live for everyone',
+
+    // Report form
+    rfTitle: '📣 Report a civic issue',
+    rfSubtitle: 'Takes 30 seconds · Visible to everyone · Powers collective action',
+    rfStep1: 'Which area?',
+    rfStep2: "What's the issue?",
+    rfStep3: 'Describe it',
+    rfSpecific: 'Specific sector / landmark (optional)',
+    rfShortTitle: 'Short title (one line)',
+    rfTitlePlaceholder: 'e.g., No water for 3 days',
+    rfTitleHint: 'Keep it specific and factual.',
+    rfDetails: 'Details',
+    rfDetailsPlaceholder: "What's happening? How long? Who's affected?",
+    rfPhoto: '📷 Photo evidence (optional, max 800KB)',
+    rfPhotoTap: 'Tap to add photo',
+    rfPhotoCompress: 'Auto-compressed to fit',
+    rfRemove: 'Remove',
+    rfYourName: 'Your name or society (optional)',
+    rfYourNamePlaceholder: 'e.g., Resident, Orchid Society',
+    rfNameHint: 'Helps with credibility. No personal contact details will be shown publicly.',
+    rfAiSuggest: '✨ AI: suggest title from description',
+    rfHowVerify: 'How verification works:',
+    rfHowVerifyText: 'Your report starts as "Pending". 3 upvotes → "Verified". Anyone can mark it "Resolved" when fixed. All changes are logged in edit history.',
+
+    // Toasts
+    toastCopied: '✓ Copied',
+    toastSubmitted: '✓ Report submitted!',
+    toastUpvoted: '✓ Upvoted',
+    toastResolved: '✓ Marked resolved',
+    toastEscalated: '↗ Escalated — draft email ready',
+    toastSubscribed: "✓ Subscribed · we'll email you on updates",
+    toastUnsubscribed: '✓ Unsubscribed',
+    toastFillFields: 'Fill in all fields',
+    toastAlreadyVoted: 'Already voted',
+    toastLoggedReply: '✓ Official response logged',
+
+    // Filters
+    filterAllStatus: 'All status',
+    filterAllIssues: 'All issues',
+    filterEveryone: 'Everyone',
+    filterFollowing: '📌 Following',
+    filterMine: '👤 My reports',
+    searchPlaceholder: '🔍 Search by title, sector, or zone...',
+
+    // Trust
+    trustGold: 'Trusted Contributor',
+    trustSilver: 'Active Citizen',
+    trustBronze: 'Contributor',
+    trustEarn: '💪 Report an issue to earn your first trust badge',
+
+    // Subscribe prompt
+    subscribePrompt: '📧 Get notified when this issue gets verified, escalated, or resolved.\n\nEnter your email (kept private, never shared):',
+    invalidEmail: 'Invalid email',
+
+    // Misc
+    yours: 'yours',
+    demo: 'demo',
+    notSpecified: 'Not specified',
+    resident: 'Resident',
+    moreReports: 'See all',
+    noReportsYet: 'No reports yet. Be the first!',
+    justNow: 'just now',
+    timeAgo_m: 'm ago',
+    timeAgo_h: 'h ago',
+    timeAgo_d: 'd ago',
+
+    // Language
+    langName: 'English',
+  },
+
+  mr: {
+    appName: 'सिविकमॅप खारघर',
+    appTagline: 'नागरिकांची नागरी जबाबदारी · ओपन सोर्स',
+
+    heroTitle: 'कोण जबाबदार आहे ते जाणून घ्या. एकत्र कारवाई करा.',
+    heroBody: 'खारघरमधील नागरी समस्या सुटत नाहीत कारण कोणाला फोन करावा हे आम्हाला माहीत नसते आणि तक्रारी अदृश्य राहतात. हे बदलते — नकाशावर पडताळणी केलेले अधिकारी, थेट समस्या ट्रॅकिंग जिथे कोणीही योगदान देऊ शकते.',
+
+    newUserTitle: '⚠️ महत्त्वाचा संदर्भ: खारघरमध्ये कोणताही निवडून आलेला नगरसेवक नाही',
+    newUserBody1: 'पीएमसी 2022 पासून आयएएस प्रशासकांच्या नियंत्रणाखाली आहे. निवडणुका: 2026.',
+    newUserBody2: 'जबाबदारीची साखळी: विभागीय अधिकारी → पीएमसी आयुक्त → आमदार → खासदार.',
+    newUserBody3: 'हे अॅप तुम्हाला अधिकृत स्त्रोतांकडून पडताळलेला प्रत्येक संपर्क देते.',
+
+    statOpen: 'खुले',
+    statVerified: 'पडताळलेले',
+    statResolved: 'सुटलेले',
+
+    sectionAction: 'तुम्हाला काय करायचे आहे?',
+    sectionHotspots: '🔥 सध्याचे हॉटस्पॉट',
+    sectionRecent: 'अलीकडील अहवाल',
+    sectionPower: '📊 अॅडव्हान्स्ड टूल्स',
+
+    actReport: 'समस्येची तक्रार करा',
+    actReportSub: 'पाणीटंचाई, खड्डे, कचरा — 30 सेकंदात नकाशावर ठेवा',
+    actLiveMap: 'थेट समस्या नकाशा',
+    actLiveMapSub: 'खारघरमध्ये कुठे तक्रारी जमा होत आहेत ते आत्ता पहा',
+    actWho: 'कोण जबाबदार आहे?',
+    actWhoSub: 'आमदार, खासदार, विभागीय अधिकारी — प्रत्येक समस्येसाठी पडताळलेले संपर्क',
+    actAllIssues: 'सर्व खुले प्रश्न',
+    actAllIssuesSub: 'इतर रहिवाशांच्या तक्रारी ब्राउझ करा, अपवोट करा आणि पडताळणीत मदत करा',
+    actReportCards: 'रिपोर्ट कार्ड',
+    actReportCardsSub: 'आमदार, खासदार, पीएमसीसाठी ग्रेड — जबाबदारी स्कोअरकार्ड',
+    actResponses: 'प्रतिसाद नोंद',
+    actResponsesSub: 'प्राप्त झालेल्या प्रत्येक सरकारी उत्तराची सार्वजनिक नोंद',
+    actInsights: 'डेटा अंतर्दृष्टी',
+    actInsightsSub: 'नागरी समस्यांचे ट्रेंड, पॅटर्न आणि AI विश्लेषण',
+    actExport: 'निर्यात आणि एस्केलेट',
+    actExportSub: 'CSV, बल्क ईमेल, RTI टेम्प्लेट, लोकशाही दिन पॅकेट',
+    actCharter: 'हे कसे कार्य करते',
+    actCharterSub: 'कम्युनिटी चार्टर, SLAs, नियम — पूर्ण पारदर्शकता',
+
+    pressShareTitle: 'प्रेस किंवा सोशल मीडियासह शेअर करा',
+    pressShareSub: 'खारघरच्या नागरी आरोग्याचा शेअर करण्यायोग्य स्नॅपशॉट तयार करा',
+
+    navHome: 'होम',
+    navMap: 'नकाशा',
+    navReport: 'तक्रार',
+    navIssues: 'प्रश्न',
+
+    statusPending: 'प्रलंबित',
+    statusVerified: 'पडताळलेले',
+    statusResolved: 'सुटलेले',
+
+    catWater: 'पाणी',
+    catRoads: 'रस्ते',
+    catDrainage: 'गटार',
+    catSanitation: 'कचरा',
+    catElectricity: 'वीज',
+    catEncroachment: 'अतिक्रमण',
+    catParks: 'उद्याने',
+    catTraffic: 'वाहतूक',
+    catSafety: 'सुरक्षा',
+
+    btnUpvote: 'अपवोट',
+    btnDetails: 'तपशील',
+    btnSubscribe: 'सदस्य व्हा',
+    btnUnsubscribe: 'सदस्यता रद्द',
+    btnEscalate: 'एस्केलेट',
+    btnLogReply: 'उत्तर नोंदवा',
+    btnResolved: 'सुटले',
+    btnWhoToCall: 'कोणाला कॉल करावे',
+    btnCopy: 'कॉपी',
+    btnCallNow: 'आता कॉल करा',
+    btnEmail: 'ईमेल',
+    btnPress: 'प्रेस',
+    btnReportHere: 'इथे समस्या नोंदवा',
+    btnSubmit: '🚀 अहवाल सबमिट करा — तो सर्वांसाठी थेट होईल',
+
+    rfTitle: '📣 नागरी समस्येची तक्रार करा',
+    rfSubtitle: '30 सेकंद घेते · सर्वांसाठी दृश्यमान · सामूहिक कृतीला बळ देते',
+    rfStep1: 'कोणते क्षेत्र?',
+    rfStep2: 'समस्या काय आहे?',
+    rfStep3: 'त्याचे वर्णन करा',
+    rfSpecific: 'विशिष्ट सेक्टर / खूण (पर्यायी)',
+    rfShortTitle: 'लहान शीर्षक (एक ओळ)',
+    rfTitlePlaceholder: 'उदा., 3 दिवसांपासून पाणी नाही',
+    rfTitleHint: 'विशिष्ट आणि वस्तुस्थितीनिष्ठ ठेवा.',
+    rfDetails: 'तपशील',
+    rfDetailsPlaceholder: 'काय होत आहे? किती काळ? कोणावर परिणाम होत आहे?',
+    rfPhoto: '📷 फोटो पुरावा (पर्यायी, कमाल 800KB)',
+    rfPhotoTap: 'फोटो जोडण्यासाठी टॅप करा',
+    rfPhotoCompress: 'फिट करण्यासाठी स्वयंचलित कॉम्प्रेस केले',
+    rfRemove: 'काढा',
+    rfYourName: 'तुमचे नाव किंवा सोसायटी (पर्यायी)',
+    rfYourNamePlaceholder: 'उदा., रहिवासी, ऑर्किड सोसायटी',
+    rfNameHint: 'विश्वासार्हतेसाठी मदत करते. वैयक्तिक संपर्क तपशील सार्वजनिकरित्या दाखवले जाणार नाहीत.',
+    rfAiSuggest: '✨ AI: वर्णनावरून शीर्षक सुचवा',
+    rfHowVerify: 'पडताळणी कशी कार्य करते:',
+    rfHowVerifyText: 'तुमचा अहवाल "प्रलंबित" म्हणून सुरू होतो. 3 अपवोट्स → "पडताळलेले". कोणीही "सुटले" म्हणून चिन्हांकित करू शकते. सर्व बदल नोंदविले जातात.',
+
+    toastCopied: '✓ कॉपी केले',
+    toastSubmitted: '✓ अहवाल सबमिट केला!',
+    toastUpvoted: '✓ अपवोट केले',
+    toastResolved: '✓ सुटले म्हणून चिन्हांकित',
+    toastEscalated: '↗ एस्केलेट केले — ईमेल मसुदा तयार',
+    toastSubscribed: '✓ सदस्यता घेतली · अपडेट्ससाठी ईमेल पाठवू',
+    toastUnsubscribed: '✓ सदस्यता रद्द केली',
+    toastFillFields: 'सर्व फील्ड भरा',
+    toastAlreadyVoted: 'आधीच मतदान केले',
+    toastLoggedReply: '✓ अधिकृत प्रतिसाद नोंदवला',
+
+    filterAllStatus: 'सर्व स्थिती',
+    filterAllIssues: 'सर्व समस्या',
+    filterEveryone: 'सर्व',
+    filterFollowing: '📌 फॉलोइंग',
+    filterMine: '👤 माझे अहवाल',
+    searchPlaceholder: '🔍 शीर्षक, सेक्टर किंवा झोनद्वारे शोधा...',
+
+    trustGold: 'विश्वासू योगदानकर्ता',
+    trustSilver: 'सक्रिय नागरिक',
+    trustBronze: 'योगदानकर्ता',
+    trustEarn: '💪 तुमचा पहिला विश्वास बॅज मिळवण्यासाठी समस्येची तक्रार करा',
+
+    subscribePrompt: '📧 ही समस्या पडताळली गेली, एस्केलेट केली गेली किंवा सुटली तेव्हा सूचित करा.\n\nतुमचा ईमेल टाका (खाजगी ठेवला जातो, कधीही शेअर केला जात नाही):',
+    invalidEmail: 'अवैध ईमेल',
+
+    yours: 'तुमचे',
+    demo: 'डेमो',
+    notSpecified: 'निर्दिष्ट नाही',
+    resident: 'रहिवासी',
+    moreReports: 'सर्व पहा',
+    noReportsYet: 'अद्याप कोणतेही अहवाल नाहीत. पहिले व्हा!',
+    justNow: 'आत्ताच',
+    timeAgo_m: 'मि पूर्वी',
+    timeAgo_h: 'ता पूर्वी',
+    timeAgo_d: 'दि पूर्वी',
+
+    langName: 'मराठी',
+  },
+
+  hi: {
+    appName: 'सिविकमैप खारघर',
+    appTagline: 'नागरिक-संचालित नागरिक जवाबदेही · ओपन सोर्स',
+
+    heroTitle: 'जानें कौन ज़िम्मेदार है। साथ मिलकर कार्रवाई करें।',
+    heroBody: 'खारघर में नागरिक समस्याएं इसलिए हल नहीं होतीं क्योंकि हमें पता नहीं होता किसे फोन करें, और शिकायतें अदृश्य रहती हैं। यह दोनों बदलता है — नक्शे पर सत्यापित अधिकारी, लाइव मुद्दा ट्रैकिंग जिसमें कोई भी योगदान दे सकता है।',
+
+    newUserTitle: '⚠️ महत्वपूर्ण संदर्भ: खारघर में कोई निर्वाचित पार्षद नहीं है',
+    newUserBody1: 'पीएमसी 2022 से आईएएस प्रशासक शासन के अधीन है। चुनाव: 2026।',
+    newUserBody2: 'जवाबदेही की श्रृंखला: विभाग अधिकारी → पीएमसी आयुक्त → विधायक → सांसद।',
+    newUserBody3: 'यह ऐप आपको आधिकारिक स्रोतों से सत्यापित हर संपर्क देता है।',
+
+    statOpen: 'खुले',
+    statVerified: 'सत्यापित',
+    statResolved: 'हल किए',
+
+    sectionAction: 'आप क्या करना चाहते हैं?',
+    sectionHotspots: '🔥 वर्तमान हॉटस्पॉट',
+    sectionRecent: 'हाल की रिपोर्ट',
+    sectionPower: '📊 एडवांस्ड टूल्स',
+
+    actReport: 'समस्या की रिपोर्ट करें',
+    actReportSub: 'पानी की कटौती, गड्ढे, कचरा — 30 सेकंड में नक्शे पर डालें',
+    actLiveMap: 'लाइव मुद्दा नक्शा',
+    actLiveMapSub: 'देखें खारघर में अभी कहां शिकायतें जमा हो रही हैं',
+    actWho: 'कौन ज़िम्मेदार है?',
+    actWhoSub: 'विधायक, सांसद, विभागीय अधिकारी — हर समस्या के लिए सत्यापित संपर्क',
+    actAllIssues: 'सभी खुले मुद्दे',
+    actAllIssuesSub: 'अन्य निवासियों की शिकायतें देखें, अपवोट करें और सत्यापन में मदद करें',
+    actReportCards: 'रिपोर्ट कार्ड',
+    actReportCardsSub: 'विधायक, सांसद, पीएमसी के लिए ग्रेड — जवाबदेही स्कोरकार्ड',
+    actResponses: 'प्रतिक्रिया लॉग',
+    actResponsesSub: 'प्राप्त हर सरकारी उत्तर का सार्वजनिक रिकॉर्ड',
+    actInsights: 'डेटा अंतर्दृष्टि',
+    actInsightsSub: 'नागरिक समस्याओं के ट्रेंड, पैटर्न और AI विश्लेषण',
+    actExport: 'निर्यात और एस्केलेट',
+    actExportSub: 'CSV, बल्क ईमेल, RTI टेम्पलेट, लोकशाही दिन पैकेट',
+    actCharter: 'यह कैसे काम करता है',
+    actCharterSub: 'कम्युनिटी चार्टर, SLAs, नियम — पूर्ण पारदर्शिता',
+
+    pressShareTitle: 'प्रेस या सोशल मीडिया के साथ साझा करें',
+    pressShareSub: 'खारघर के नागरिक स्वास्थ्य का साझा करने योग्य स्नैपशॉट बनाएं',
+
+    navHome: 'होम',
+    navMap: 'नक्शा',
+    navReport: 'रिपोर्ट',
+    navIssues: 'मुद्दे',
+
+    statusPending: 'लंबित',
+    statusVerified: 'सत्यापित',
+    statusResolved: 'हल किया',
+
+    catWater: 'पानी',
+    catRoads: 'सड़कें',
+    catDrainage: 'नाली',
+    catSanitation: 'कचरा',
+    catElectricity: 'बिजली',
+    catEncroachment: 'अतिक्रमण',
+    catParks: 'पार्क',
+    catTraffic: 'यातायात',
+    catSafety: 'सुरक्षा',
+
+    btnUpvote: 'अपवोट',
+    btnDetails: 'विवरण',
+    btnSubscribe: 'सब्सक्राइब',
+    btnUnsubscribe: 'अनसब्सक्राइब',
+    btnEscalate: 'एस्केलेट',
+    btnLogReply: 'जवाब लॉग करें',
+    btnResolved: 'हल किया',
+    btnWhoToCall: 'किसे कॉल करें',
+    btnCopy: 'कॉपी',
+    btnCallNow: 'अभी कॉल करें',
+    btnEmail: 'ईमेल',
+    btnPress: 'प्रेस',
+    btnReportHere: 'यहां समस्या रिपोर्ट करें',
+    btnSubmit: '🚀 रिपोर्ट सबमिट करें — यह सबके लिए लाइव होगी',
+
+    rfTitle: '📣 नागरिक समस्या की रिपोर्ट करें',
+    rfSubtitle: '30 सेकंड लगते हैं · सबको दिखती है · सामूहिक कार्रवाई को शक्ति देती है',
+    rfStep1: 'कौन सा क्षेत्र?',
+    rfStep2: 'समस्या क्या है?',
+    rfStep3: 'इसका वर्णन करें',
+    rfSpecific: 'विशिष्ट सेक्टर / स्थलचिह्न (वैकल्पिक)',
+    rfShortTitle: 'छोटा शीर्षक (एक पंक्ति)',
+    rfTitlePlaceholder: 'जैसे, 3 दिनों से पानी नहीं',
+    rfTitleHint: 'विशिष्ट और तथ्यात्मक रखें।',
+    rfDetails: 'विवरण',
+    rfDetailsPlaceholder: 'क्या हो रहा है? कितने समय से? कौन प्रभावित है?',
+    rfPhoto: '📷 फोटो प्रमाण (वैकल्पिक, अधिकतम 800KB)',
+    rfPhotoTap: 'फोटो जोड़ने के लिए टैप करें',
+    rfPhotoCompress: 'फिट करने के लिए ऑटो-कंप्रेस्ड',
+    rfRemove: 'हटाएं',
+    rfYourName: 'आपका नाम या सोसायटी (वैकल्पिक)',
+    rfYourNamePlaceholder: 'जैसे, निवासी, ऑर्किड सोसायटी',
+    rfNameHint: 'विश्वसनीयता में मदद करता है। व्यक्तिगत संपर्क विवरण सार्वजनिक रूप से नहीं दिखाए जाएंगे।',
+    rfAiSuggest: '✨ AI: विवरण से शीर्षक सुझाएं',
+    rfHowVerify: 'सत्यापन कैसे काम करता है:',
+    rfHowVerifyText: 'आपकी रिपोर्ट "लंबित" के रूप में शुरू होती है। 3 अपवोट → "सत्यापित"। कोई भी ठीक होने पर "हल किया" चिह्नित कर सकता है। सभी परिवर्तन लॉग किए जाते हैं।',
+
+    toastCopied: '✓ कॉपी किया गया',
+    toastSubmitted: '✓ रिपोर्ट सबमिट हुई!',
+    toastUpvoted: '✓ अपवोट किया',
+    toastResolved: '✓ हल किया गया चिह्नित',
+    toastEscalated: '↗ एस्केलेट किया — ईमेल ड्राफ्ट तैयार',
+    toastSubscribed: '✓ सब्सक्राइब किया · अपडेट के लिए ईमेल भेजेंगे',
+    toastUnsubscribed: '✓ अनसब्सक्राइब किया',
+    toastFillFields: 'सभी फ़ील्ड भरें',
+    toastAlreadyVoted: 'पहले ही वोट दिया',
+    toastLoggedReply: '✓ आधिकारिक प्रतिक्रिया लॉग की गई',
+
+    filterAllStatus: 'सभी स्थिति',
+    filterAllIssues: 'सभी मुद्दे',
+    filterEveryone: 'सभी',
+    filterFollowing: '📌 फॉलोइंग',
+    filterMine: '👤 मेरी रिपोर्ट',
+    searchPlaceholder: '🔍 शीर्षक, सेक्टर या ज़ोन से खोजें...',
+
+    trustGold: 'विश्वसनीय योगदानकर्ता',
+    trustSilver: 'सक्रिय नागरिक',
+    trustBronze: 'योगदानकर्ता',
+    trustEarn: '💪 अपना पहला विश्वास बैज पाने के लिए एक समस्या रिपोर्ट करें',
+
+    subscribePrompt: '📧 जब यह समस्या सत्यापित हो, एस्केलेट हो या हल हो तो सूचित किया जाए।\n\nअपना ईमेल दर्ज करें (निजी रखा जाता है, कभी साझा नहीं किया जाता):',
+    invalidEmail: 'अमान्य ईमेल',
+
+    yours: 'आपका',
+    demo: 'डेमो',
+    notSpecified: 'निर्दिष्ट नहीं',
+    resident: 'निवासी',
+    moreReports: 'सभी देखें',
+    noReportsYet: 'अभी तक कोई रिपोर्ट नहीं। पहले बनें!',
+    justNow: 'अभी',
+    timeAgo_m: 'मि पहले',
+    timeAgo_h: 'घं पहले',
+    timeAgo_d: 'दि पहले',
+
+    langName: 'हिन्दी',
+  }
+};
+
+let currentLang = 'en';
+
+function t(key) {
+  return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || TRANSLATIONS.en[key] || key;
+}
+
+function setLanguage(lang) {
+  if (!TRANSLATIONS[lang]) return;
+  currentLang = lang;
+  userState.language = lang;
+  saveUser();
+  // Re-render everything
+  document.querySelector('.tagline').textContent = t('appTagline');
+  document.querySelectorAll('.nav-item').forEach(b => {
+    const view = b.dataset.view;
+    const labels = { home: t('navHome'), map: t('navMap'), report: t('navReport'), complaints: t('navIssues') };
+    const iconHtml = b.querySelector('.nav-icon').outerHTML;
+    b.innerHTML = iconHtml + labels[view];
+  });
+  rerenderCurrentView();
+  toast('🌐 ' + (TRANSLATIONS[lang].langName));
+}
+
+window.setLanguage = setLanguage;
+window.t = t;
+
+// ============================================================================
 // SLA & LIFECYCLE — Community Charter rules built into the app
 // ============================================================================
 // These SLAs make the workflow feel automated even before real backend exists.
@@ -1608,14 +2084,22 @@ window.renderCharter = renderCharter;
 
 function setReportField(field, value) {
   state.reportForm[field] = value;
-  renderReportForm();
-  setTimeout(() => {
-    const map = { title:'f-title', description:'f-desc', sector:'f-sector', contact:'f-contact' };
-    if (map[field]) {
-      const e = document.getElementById(map[field]);
-      if (e) { e.focus(); e.setSelectionRange(e.value.length, e.value.length); }
-    }
-  }, 0);
+  // Only re-render if it's a structural change (zone/issue selection)
+  // Text inputs update state silently to avoid screen jumping while typing
+  if (field === 'zone' || field === 'issue' || field === 'photo') {
+    renderReportForm();
+  }
+  // Update submit button visibility if all fields are filled
+  updateSubmitButtonVisibility();
+}
+
+function updateSubmitButtonVisibility() {
+  const f = state.reportForm;
+  const ready = f.zone && f.issue && f.title && f.description;
+  const submitWrap = document.getElementById('submit-wrap');
+  if (submitWrap) {
+    submitWrap.style.display = ready ? 'block' : 'none';
+  }
 }
 
 function openReportWithZone(zoneId) {
@@ -1666,70 +2150,70 @@ function renderHome() {
 
   const html = `
     <div class="hero">
-      <h2>Know who's responsible. Take action together.</h2>
-      <p>Civic issues in Kharghar don't get fixed because we don't know who to call, and complaints stay invisible. This changes both — verified officials on a map, live issue tracking that anyone can contribute to.</p>
+      <h2>${t('heroTitle')}</h2>
+      <p>${t('heroBody')}</p>
     </div>
 
     ${isNewUser ? `
       <div style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:1px solid #F59E0B;border-radius:12px;padding:14px;margin-bottom:14px">
-        <div style="font-size:14px;font-weight:700;color:#92400E;margin-bottom:6px">⚠️ Important context: Kharghar has no elected corporators</div>
+        <div style="font-size:14px;font-weight:700;color:#92400E;margin-bottom:6px">${t('newUserTitle')}</div>
         <div style="font-size:12px;color:#78350F;line-height:1.5">
-          PMC has been under IAS Administrator rule since 2022. Elections: 2026.<br>
-          Your chain of accountability: Dept Officer → PMC Commissioner → MLA → MP.<br>
-          This app gives you every contact, verified from official sources.
+          ${t('newUserBody1')}<br>
+          ${t('newUserBody2')}<br>
+          ${t('newUserBody3')}
         </div>
       </div>
     ` : ''}
 
     ${tier ? `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:1px solid var(--border);border-radius:12px;margin-bottom:14px">
-        <span class="trust-badge trust-${tier.tier}">${tier.icon} ${tier.label}</span>
-        <div style="flex:1;font-size:11px;color:var(--muted)">${userState.trustScore} trust points · ${(userState.reported||[]).length} reports · ${(userState.resolved||[]).length} marked resolved</div>
+        <span class="trust-badge trust-${tier.tier}">${tier.icon} ${t('trust' + tier.tier.charAt(0).toUpperCase() + tier.tier.slice(1))}</span>
+        <div style="flex:1;font-size:11px;color:var(--muted)">${userState.trustScore} pts · ${(userState.reported||[]).length} reports · ${(userState.resolved||[]).length} resolved</div>
       </div>` : !isNewUser ? `
       <div style="padding:10px 14px;background:#FFF4ED;border:1px solid #FED7AA;border-radius:12px;margin-bottom:14px;font-size:11px;color:#9A3412;text-align:center">
-        💪 Report an issue to earn your first trust badge
+        ${t('trustEarn')}
       </div>` : ''}
 
     <div id="ai-insight-slot"></div>
 
     <div class="stats-row">
-      <div class="stat-card live"><div class="stat-num" data-target="${open}">0</div><div class="stat-label"><span class="live-dot"></span>Open</div></div>
-      <div class="stat-card verified"><div class="stat-num" data-target="${verified}">0</div><div class="stat-label">⚠️ Verified</div></div>
-      <div class="stat-card resolved"><div class="stat-num" data-target="${resolved}">0</div><div class="stat-label">✅ Resolved</div></div>
+      <div class="stat-card live"><div class="stat-num" data-target="${open}">0</div><div class="stat-label"><span class="live-dot"></span>${t('statOpen')}</div></div>
+      <div class="stat-card verified"><div class="stat-num" data-target="${verified}">0</div><div class="stat-label">⚠️ ${t('statVerified')}</div></div>
+      <div class="stat-card resolved"><div class="stat-num" data-target="${resolved}">0</div><div class="stat-label">✅ ${t('statResolved')}</div></div>
     </div>
 
-    <div class="section-head">What do you want to do?</div>
+    <div class="section-head">${t('sectionAction')}</div>
     <div class="action-grid">
       <button class="action-card primary" onclick="go('report')">
         <span class="icon">📣</span>
-        <h3>Report an issue</h3>
-        <p>Water outage, pothole, garbage — put it on the map in 30 seconds</p>
+        <h3>${t('actReport')}</h3>
+        <p>${t('actReportSub')}</p>
       </button>
       <button class="action-card" onclick="goHeatmap()">
         <span class="icon">🔥</span>
-        <h3>Live issue map</h3>
-        <p>See where complaints are piling up across Kharghar right now</p>
+        <h3>${t('actLiveMap')}</h3>
+        <p>${t('actLiveMapSub')}</p>
       </button>
       <button class="action-card" onclick="goAccountability()">
         <span class="icon">👥</span>
-        <h3>Who's responsible?</h3>
-        <p>MLA, MP, dept officers — verified contacts for every issue</p>
+        <h3>${t('actWho')}</h3>
+        <p>${t('actWhoSub')}</p>
       </button>
       <button class="action-card" onclick="go('complaints')">
         <span class="icon">📋</span>
-        <h3>All open issues</h3>
-        <p>Browse, upvote, and help verify complaints from other residents</p>
+        <h3>${t('actAllIssues')}</h3>
+        <p>${t('actAllIssuesSub')}</p>
       </button>
     </div>
 
     ${hotspots.length ? `
-      <div class="section-head">🔥 Current hotspots</div>
+      <div class="section-head">${t('sectionHotspots')}</div>
       ${hotspots.map(h => `
         <div class="activity-item" onclick="selectZone('${h.zone.id}'); go('map')">
           <div class="activity-icon" style="background:${h.zone.color}">📍</div>
           <div class="activity-info">
             <div class="activity-title">${h.zone.name}</div>
-            <div class="activity-meta">${h.zone.sectorRange} · <strong style="color:var(--red)">${h.n} open issue${h.n===1?'':'s'}</strong></div>
+            <div class="activity-meta">${h.zone.sectorRange} · <strong style="color:var(--red)">${h.n} ${t('statOpen').toLowerCase()}</strong></div>
           </div>
         </div>`).join('')}
     ` : ''}
@@ -1737,13 +2221,13 @@ function renderHome() {
     <div class="press-banner" onclick="sharePress()">
       <div class="press-banner-icon">📰</div>
       <div class="press-banner-text" style="flex:1">
-        <h4>Share with press or social media</h4>
-        <p>Generate a shareable snapshot of Kharghar's civic health</p>
+        <h4>${t('pressShareTitle')}</h4>
+        <p>${t('pressShareSub')}</p>
       </div>
       <div style="color:white;font-size:18px">→</div>
     </div>
 
-    <div class="section-head">Recent reports</div>
+    <div class="section-head">${t('sectionRecent')}</div>
     ${recent.length ? recent.map(c => {
       const iss = issueById(c.issue); const z = zoneById(c.zone);
       return `
@@ -1753,40 +2237,40 @@ function renderHome() {
             <div class="activity-title">${c.title}</div>
             <div class="activity-meta">
               ${z?z.name:''} · ${c.sector||''} · ${timeAgo(c.timestamp)}
-              <span class="status-badge status-${c.status}">${c.status}</span>
+              <span class="status-badge status-${c.status}">${t('status' + c.status.charAt(0).toUpperCase() + c.status.slice(1))}</span>
               <span>👍 ${c.upvotes}</span>
               ${c.photo ? '<span class="photo-chip">📷</span>' : ''}
             </div>
           </div>
         </div>`;
-    }).join('') : '<p style="color:var(--muted);font-size:13px">No reports yet. Be the first!</p>'}
+    }).join('') : `<p style="color:var(--muted);font-size:13px">${t('noReportsYet')}</p>`}
 
-    <div class="section-head">📊 Power tools</div>
+    <div class="section-head">${t('sectionPower')}</div>
     <div class="action-grid">
       <button class="action-card" onclick="go('reportcard')">
         <span class="icon">📊</span>
-        <h3>Report cards</h3>
-        <p>Grades for MLA, MP, PMC — accountability scorecards</p>
+        <h3>${t('actReportCards')}</h3>
+        <p>${t('actReportCardsSub')}</p>
       </button>
       <button class="action-card" onclick="go('responses')">
         <span class="icon">💬</span>
-        <h3>Response log</h3>
-        <p>Public record of every government reply received</p>
+        <h3>${t('actResponses')}</h3>
+        <p>${t('actResponsesSub')}</p>
       </button>
       <button class="action-card" onclick="go('insights')">
         <span class="icon">📈</span>
-        <h3>Data insights</h3>
-        <p>Trends, patterns, and AI analysis of civic issues</p>
+        <h3>${t('actInsights')}</h3>
+        <p>${t('actInsightsSub')}</p>
       </button>
       <button class="action-card" onclick="go('export')">
         <span class="icon">📤</span>
-        <h3>Export & escalate</h3>
-        <p>CSV, bulk emails, RTI templates, Lokshahi Din packet</p>
+        <h3>${t('actExport')}</h3>
+        <p>${t('actExportSub')}</p>
       </button>
       <button class="action-card" onclick="go('charter')">
         <span class="icon">📜</span>
-        <h3>How this works</h3>
-        <p>Community Charter, SLAs, rules — full transparency</p>
+        <h3>${t('actCharter')}</h3>
+        <p>${t('actCharterSub')}</p>
       </button>
     </div>
 
@@ -2334,6 +2818,11 @@ function rerenderCurrentView() {
   if (state.view === 'home') renderHome();
   if (state.view === 'complaints') renderComplaintsList();
   if (state.view === 'insights') renderInsights();
+  if (state.view === 'report') renderReportForm();
+  if (state.view === 'reportcard') renderReportCard(state.viewArg);
+  if (state.view === 'export') renderExport();
+  if (state.view === 'charter') renderCharter();
+  if (state.view === 'responses') renderResponses();
 }
 
 function openComplaintDetail(id) {
@@ -2417,13 +2906,14 @@ function renderReportForm() {
       <div class="form-hint">Helps with credibility. No personal contact details will be shown publicly.</div>
     </div>` : ''}
 
-    ${f.zone && f.issue && f.title && f.description ? `
-    <button class="btn primary" style="width:100%;padding:14px;font-size:14px" onclick="submitReport()">
-      🚀 Submit report — it goes live for everyone
-    </button>
-    <div style="margin-top:10px;padding:10px;background:#FFF4ED;border-radius:8px;font-size:11px;color:#9A3412;line-height:1.5">
-      <strong>How verification works:</strong> Your report starts as "Pending". 3 upvotes → "Verified". Anyone can mark it "Resolved" when fixed. All changes are logged in edit history.
-    </div>` : ''}
+    <div id="submit-wrap" style="display:${f.zone && f.issue && f.title && f.description ? 'block' : 'none'}">
+      <button class="btn primary" style="width:100%;padding:14px;font-size:14px" onclick="submitReport()">
+        🚀 Submit report — it goes live for everyone
+      </button>
+      <div style="margin-top:10px;padding:10px;background:#FFF4ED;border-radius:8px;font-size:11px;color:#9A3412;line-height:1.5">
+        <strong>How verification works:</strong> Your report starts as "Pending". 3 upvotes → "Verified". Anyone can mark it "Resolved" when fixed. All changes are logged in edit history.
+      </div>
+    </div>
   `;
   document.getElementById('form-content').innerHTML = html;
 }
@@ -3421,7 +3911,7 @@ Object.assign(window, {
   handleUpvote, handleEscalate, handleResolvedPrompt, logOfficialResponse,
   openComplaintDetail, openComplaintAction, viewPhoto, upvoteDuplicate, confirmNotDuplicate,
   // Report form
-  submitReport, aiSuggestTitle, handlePhotoUpload,
+  submitReport, aiSuggestTitle, handlePhotoUpload, updateSubmitButtonVisibility,
   // List filters
   listSetIssue, listSetStatus, listSetQuery, listSetScope,
   // Export functions
